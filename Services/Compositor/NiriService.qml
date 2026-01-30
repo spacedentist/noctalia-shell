@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import Quickshell.Wayland
 import qs.Commons
 import qs.Services.Keyboard
 
@@ -57,6 +58,13 @@ Item {
 
   function updateWindows() {
     sendSocketCommand(niriCommandSocket, "Windows");
+  }
+
+  Timer {
+    id: workspaceUpdateTimer
+    interval: 50
+    repeat: false
+    onTriggered: updateWorkspaces()
   }
 
   function queryDisplayScales() {
@@ -186,7 +194,7 @@ Item {
                   } else if (event.WindowsChanged) {
                     handleWindowsChanged(event.WindowsChanged);
                   } else if (event.WorkspaceActivated) {
-                    updateWorkspaces();
+                    workspaceUpdateTimer.restart();
                   } else if (event.WindowFocusChanged) {
                     handleWindowFocusChanged(event.WindowFocusChanged);
                   } else if (event.WindowLayoutsChanged) {
@@ -328,6 +336,7 @@ Item {
       }
 
       windowListChanged();
+      workspaceUpdateTimer.restart();
     } catch (e) {
       Logger.e("NiriService", "Error handling WindowOpenedOrChanged:", e);
     }
@@ -348,6 +357,7 @@ Item {
 
         windows.splice(windowIndex, 1);
         windowListChanged();
+        workspaceUpdateTimer.restart();
       }
     } catch (e) {
       Logger.e("NiriService", "Error handling WindowClosed:", e);
@@ -468,5 +478,24 @@ Item {
     } catch (e) {
       Logger.e("NiriService", "Failed to logout:", e);
     }
+  }
+
+  function cycleKeyboardLayout() {
+    try {
+      Quickshell.execDetached(["niri", "msg", "action", "switch-layout", "next"]);
+    } catch (e) {
+      Logger.e("NiriService", "Failed to cycle keyboard layout:", e);
+    }
+  }
+
+  function getFocusedScreen() {
+    // On niri the code below only works when you have an actual app selected on that screen.
+    return null;
+
+    // const activeToplevel = ToplevelManager.activeToplevel;
+    // if (activeToplevel && activeToplevel.screens && activeToplevel.screens.length > 0) {
+    //   return activeToplevel.screens[0];
+    // }
+    // return null;
   }
 }

@@ -279,7 +279,7 @@ Singleton {
             root.availablePlugins.push(plugin);
           }
 
-          Logger.i("PluginService", "Loaded", registry.plugins.length, "plugins from", source.name);
+          Logger.i("PluginService", `Parsed ${registry.plugins.length} plugins manifest from '${source.name}'`);
 
           // Remove from active fetches BEFORE emitting signal so handler sees correct count
           delete activeFetches[source.url];
@@ -325,7 +325,7 @@ Singleton {
     }
 
     // For official plugins, also check if any custom version with same base ID exists
-    if (PluginRegistry.isOfficialSource(sourceUrl)) {
+    if (PluginRegistry.isMainSource(sourceUrl)) {
       var allInstalled = PluginRegistry.getAllInstalledPluginIds();
       for (var i = 0; i < allInstalled.length; i++) {
         var parsed = PluginRegistry.parseCompositeKey(allInstalled[i]);
@@ -344,7 +344,7 @@ Singleton {
     }
 
     // For custom plugins, check if official version exists
-    if (!PluginRegistry.isOfficialSource(sourceUrl)) {
+    if (!PluginRegistry.isMainSource(sourceUrl)) {
       if (PluginRegistry.isPluginDownloaded(pluginMetadata.id)) {
         return {
           collision: true,
@@ -1005,19 +1005,13 @@ Singleton {
 
     // ----------------------------------------
     // Plural translation function
-    api.trp = function (key, count, defaultSingular, defaultPlural, interpolations) {
-      if (typeof defaultSingular === 'undefined') {
-        defaultSingular = '';
-      }
-      if (typeof defaultPlural === 'undefined') {
-        defaultPlural = '';
-      }
+    api.trp = function (key, count, interpolations) {
       if (typeof interpolations === 'undefined') {
         interpolations = {};
       }
 
-      // Use key for singular, key_plural for plural
-      var pluralKey = count === 1 ? key : key + '-plural';
+      // Use key for singular, key-plural for plural
+      const realKey = count === 1 ? key : `${key}-plural`;
 
       // Merge interpolations with count
       var finalInterpolations = {
@@ -1028,7 +1022,7 @@ Singleton {
       }
 
       // Use tr() to look up the translation
-      return api.tr(pluralKey, finalInterpolations);
+      return api.tr(realKey, finalInterpolations);
     };
 
     // ----------------------------------------
@@ -1128,7 +1122,6 @@ Singleton {
     var writeCmd = "mkdir -p '" + dirEsc + "' && cat > '" + fileEsc + "' << '" + delimiter + "'\n" + settingsJson + "\n" + delimiter + "\n";
 
     Logger.d("PluginService", "Saving settings to:", settingsFile);
-    Logger.d("PluginService", "Settings JSON:", settingsJson);
 
     // Use Quickshell.execDetached to execute the command (use array syntax)
     var pid = Quickshell.execDetached(["sh", "-c", writeCmd]);
@@ -1272,31 +1265,29 @@ Singleton {
 
     if (updateCount > 0) {
       Logger.i("PluginService", updateCount, "plugin update(s) available");
-      ToastService.showNotice(I18n.tr("panels.plugins.title"), I18n.trp("panels.plugins.update-available", updateCount, "{count} plugin update available:", "{count} plugin updates available:", {
-                                                                          "count": updateCount
-                                                                        }) + "\n\n" + updatesDescription, "plugin", 5000, I18n.tr("panels.plugins.open-plugins-tab"), function () {
-                                                                          // Open settings panel to Plugins tab on the screen where the cursor is
-                                                                          if (root.screenDetector) {
-                                                                            root.screenDetector.withCurrentScreen(function (screen) {
-                                                                              var panel = PanelService.getPanel("settingsPanel", screen);
-                                                                              if (panel) {
-                                                                                panel.requestedTab = SettingsPanel.Tab.Plugins;
-                                                                                panel.open();
-                                                                              }
-                                                                            });
-                                                                          } else {
-                                                                            // Fallback to primary screen if screen detector is not available
-                                                                            var panel = PanelService.getPanel("settingsPanel", Quickshell.screens[0]);
-                                                                            if (panel) {
-                                                                              panel.requestedTab = SettingsPanel.Tab.Plugins;
-                                                                              panel.open();
-                                                                            }
-                                                                          }
-                                                                        });
+      ToastService.showNotice(I18n.tr("panels.plugins.title"), I18n.trp("panels.plugins.update-available", updateCount) + "\n\n" + updatesDescription, "plugin", 5000, I18n.tr("panels.plugins.open-plugins-tab"), function () {
+        // Open settings panel to Plugins tab on the screen where the cursor is
+        if (root.screenDetector) {
+          root.screenDetector.withCurrentScreen(function (screen) {
+            var panel = PanelService.getPanel("settingsPanel", screen);
+            if (panel) {
+              panel.requestedTab = SettingsPanel.Tab.Plugins;
+              panel.open();
+            }
+          });
+        } else {
+          // Fallback to primary screen if screen detector is not available
+          var panel = PanelService.getPanel("settingsPanel", Quickshell.screens[0]);
+          if (panel) {
+            panel.requestedTab = SettingsPanel.Tab.Plugins;
+            panel.open();
+          }
+        }
+      });
     } else if (pendingCount > 0) {
       Logger.i("PluginService", pendingCount, "plugin update(s) pending (require newer Noctalia)");
     } else {
-      Logger.i("PluginService", "All plugins are up to date");
+      Logger.i("PluginService", "All installed plugins are up to date");
     }
 
     shouldCheckUpdatesAfterFetch = false;

@@ -158,6 +158,26 @@ Item {
                                               }
                                             });
     }
+    function command() {
+      root.screenDetector.withCurrentScreen(screen => {
+                                              var launcherPanel = PanelService.getPanel("launcherPanel", screen);
+                                              if (!launcherPanel)
+                                              return;
+                                              var searchText = launcherPanel.searchText || "";
+                                              var isInClipMode = searchText.startsWith(">cmd");
+                                              if (!launcherPanel.isPanelOpen) {
+                                                // Closed -> open in clipboard mode
+                                                launcherPanel.open();
+                                                launcherPanel.setSearchText(">cmd ");
+                                              } else if (isInClipMode) {
+                                                // Already in clipboard mode -> close
+                                                launcherPanel.close();
+                                              } else {
+                                                // In another mode -> switch to clipboard mode
+                                                launcherPanel.setSearchText(">cmd ");
+                                              }
+                                            });
+    }
     function emoji() {
       root.screenDetector.withCurrentScreen(screen => {
                                               var launcherPanel = PanelService.getPanel("launcherPanel", screen);
@@ -200,6 +220,20 @@ Item {
     function decrease() {
       BrightnessService.decreaseBrightness();
     }
+    function set(value: string) {
+      var val = parseFloat(value);
+      if (isNaN(val))
+        return;
+
+      // Normalize logic: heuristic handling of 0-100 vs 0-1
+      if (val > 1.0)
+        val = val / 100.0;
+
+      // Clamp
+      val = Math.max(0.0, Math.min(1.0, val));
+
+      BrightnessService.setBrightness(val);
+    }
   }
 
   IpcHandler {
@@ -224,11 +258,14 @@ Item {
       }
 
       if (Settings.data.nightLight.forced) {
-        Settings.data.nightLight.enabled = false;
         Settings.data.nightLight.forced = false;
       } else {
-        Settings.data.nightLight.enabled = true;
-        Settings.data.nightLight.forced = true;
+        if (Settings.data.nightLight.enabled) {
+          Settings.data.nightLight.enabled = false;
+        } else {
+          Settings.data.nightLight.forced = true;
+          Settings.data.nightLight.enabled = true;
+        }
       }
     }
   }
@@ -342,13 +379,13 @@ Item {
     }
 
     function toggleAutomation() {
-      Settings.data.wallpaper.randomEnabled = !Settings.data.wallpaper.randomEnabled;
+      Settings.data.wallpaper.automationEnabled = !Settings.data.wallpaper.automationEnabled;
     }
     function disableAutomation() {
-      Settings.data.wallpaper.randomEnabled = false;
+      Settings.data.wallpaper.automationEnabled = false;
     }
     function enableAutomation() {
-      Settings.data.wallpaper.randomEnabled = true;
+      Settings.data.wallpaper.automationEnabled = true;
     }
   }
 
@@ -384,15 +421,6 @@ Item {
     }
     function disable() {
       NetworkService.setWifiEnabled(false);
-    }
-
-    // TODO REMOVE IN FEB. 2026
-    function togglePanel() {
-      ToastService.showWarning("This IPC call will be deprecated soon, use 'network togglePanel' instead.");
-      root.screenDetector.withCurrentScreen(screen => {
-                                              var networkPanel = PanelService.getPanel("networkPanel", screen);
-                                              networkPanel?.toggle(null, "WiFi");
-                                            });
     }
   }
 
@@ -472,19 +500,6 @@ Item {
     }
   }
 
-  // TODO REMOVE IN FEB. 2026
-  IpcHandler {
-    target: "osd"
-
-    function showText(text: string) {
-      ToastService.showNotice(text, "This IPC call will be deprecated soon, use 'toast send' instead.");
-    }
-
-    function showTextWithIcon(text: string, icon: string) {
-      ToastService.showNotice(text, "This IPC call will be deprecated soon, use 'toast send' instead.", icon);
-    }
-  }
-
   IpcHandler {
     target: "toast"
 
@@ -515,6 +530,14 @@ Item {
 
   IpcHandler {
     target: "media"
+
+    function toggle() {
+      root.screenDetector.withCurrentScreen(screen => {
+                                              var panel = PanelService.getPanel("mediaPlayerPanel", screen);
+                                              panel?.toggle(null, "MediaMini");
+                                            });
+    }
+
     function playPause() {
       MediaService.playPause();
     }
@@ -601,6 +624,82 @@ Item {
     }
     function set(name: string) {
       Settings.data.location.name = name;
+    }
+  }
+
+  IpcHandler {
+    target: "systemMonitor"
+    function toggle() {
+      root.screenDetector.withCurrentScreen(screen => {
+                                              var panel = PanelService.getPanel("systemStatsPanel", screen);
+                                              panel?.toggle(null, "SystemMonitor");
+                                            });
+    }
+  }
+
+  IpcHandler {
+    target: "plugin"
+    function openSettings(key: string) {
+      var manifest = PluginRegistry.getPluginManifest(key);
+      if (!manifest) {
+        Logger.w("IPC", "Plugin not found:", key);
+        return;
+      }
+      if (!manifest.entryPoints?.settings) {
+        Logger.w("IPC", "Plugin has no settings entry point:", key);
+        return;
+      }
+      root.screenDetector.withCurrentScreen(screen => {
+                                              BarService.openPluginSettings(screen, manifest);
+                                            });
+    }
+
+    function openPanel(key: string) {
+      var manifest = PluginRegistry.getPluginManifest(key);
+      if (!manifest) {
+        Logger.w("IPC", "Plugin not found:", key);
+        return;
+      }
+      if (!manifest.entryPoints?.panel) {
+        Logger.w("IPC", "Plugin has no panel entry point:", key);
+        return;
+      }
+      root.screenDetector.withCurrentScreen(screen => {
+                                              PluginService.openPluginPanel(key, screen, null);
+                                            });
+    }
+
+    function closePanel(key: string) {
+      var manifest = PluginRegistry.getPluginManifest(key);
+      if (!manifest) {
+        Logger.w("IPC", "Plugin not found:", key);
+        return;
+      }
+      if (!manifest.entryPoints?.panel) {
+        Logger.w("IPC", "Plugin has no panel entry point:", key);
+        return;
+      }
+      root.screenDetector.withCurrentScreen(screen => {
+                                              var api = PluginService.getPluginAPI(key);
+                                              if (api) {
+                                                api.closePanel(screen);
+                                              }
+                                            });
+    }
+
+    function togglePanel(key: string) {
+      var manifest = PluginRegistry.getPluginManifest(key);
+      if (!manifest) {
+        Logger.w("IPC", "Plugin not found:", key);
+        return;
+      }
+      if (!manifest.entryPoints?.panel) {
+        Logger.w("IPC", "Plugin has no panel entry point:", key);
+        return;
+      }
+      root.screenDetector.withCurrentScreen(screen => {
+                                              PluginService.togglePluginPanel(key, screen, null);
+                                            });
     }
   }
 }

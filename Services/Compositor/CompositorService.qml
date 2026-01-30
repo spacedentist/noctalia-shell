@@ -316,6 +316,14 @@ Singleton {
     return null;
   }
 
+  // Get focused screen from compositor
+  function getFocusedScreen() {
+    if (backend && backend.getFocusedScreen) {
+      return backend.getFocusedScreen();
+    }
+    return null;
+  }
+
   // Get focused window title
   function getFocusedWindowTitle() {
     if (focusedWindowIndex >= 0 && focusedWindowIndex < windows.count) {
@@ -429,6 +437,12 @@ Singleton {
   function hibernate() {
     Logger.i("Compositor", "Hibernate requested");
     Quickshell.execDetached(["sh", "-c", "systemctl hibernate || loginctl hibernate"]);
+  }
+
+  function cycleKeyboardLayout() {
+    if (backend && backend.cycleKeyboardLayout) {
+      backend.cycleKeyboardLayout();
+    }
   }
 
   property int lockAndSuspendCheckCount: 0

@@ -8,45 +8,50 @@ import qs.Commons
 Singleton {
   id: root
 
-  readonly property string colorsApplyScript: Quickshell.shellDir + '/Bin/colors-apply.sh'
+  readonly property string templateApplyScript: Quickshell.shellDir + '/Scripts/bash/template-apply.sh'
+  readonly property string gtkRefreshScript: Quickshell.shellDir + '/Scripts/python/src/theming/gtk-refresh.py'
 
-  // Terminal configurations (for wallpaper-based matugen templates)
+  // Terminal configurations (for wallpaper-based templates)
+  // Each terminal must define a postHook that sets up config includes and triggers reload
   readonly property var terminals: [
     {
       "id": "foot",
       "name": "Foot",
-      "matugenPath": "Terminal/foot",
-      "outputPath": "~/.config/foot/themes/noctalia"
+      "templatePath": "terminal/foot",
+      "outputPath": "~/.config/foot/themes/noctalia",
+      "postHook": `${templateApplyScript} foot`
     },
     {
       "id": "ghostty",
       "name": "Ghostty",
-      "matugenPath": "Terminal/ghostty",
+      "templatePath": "terminal/ghostty",
       "outputPath": "~/.config/ghostty/themes/noctalia",
-      "postHook": "bash -c 'pgrep -f ghostty >/dev/null && pkill -SIGUSR2 ghostty || true'"
+      "postHook": `${templateApplyScript} ghostty`
     },
     {
       "id": "kitty",
       "name": "Kitty",
-      "matugenPath": "Terminal/kitty.conf",
-      "outputPath": "~/.config/kitty/themes/noctalia.conf"
+      "templatePath": "terminal/kitty.conf",
+      "outputPath": "~/.config/kitty/themes/noctalia.conf",
+      "postHook": `${templateApplyScript} kitty`
     },
     {
       "id": "alacritty",
       "name": "Alacritty",
-      "matugenPath": "Terminal/alacritty.toml",
-      "outputPath": "~/.config/alacritty/themes/noctalia.toml"
+      "templatePath": "terminal/alacritty.toml",
+      "outputPath": "~/.config/alacritty/themes/noctalia.toml",
+      "postHook": `${templateApplyScript} alacritty`
     },
     {
       "id": "wezterm",
       "name": "Wezterm",
-      "matugenPath": "Terminal/wezterm.toml",
+      "templatePath": "terminal/wezterm.toml",
       "outputPath": "~/.config/wezterm/colors/Noctalia.toml",
-      "postHook": "touch ~/.config/wezterm/wezterm.lua"
+      "postHook": `${templateApplyScript} wezterm`
     }
   ]
 
-  // Application configurations - consolidated from MatugenTemplates + AppThemeService
+  // Application configurations - consolidated from Theming + AppThemeService
   readonly property var applications: [
     {
       "id": "gtk",
@@ -55,13 +60,13 @@ Singleton {
       "input": "gtk.css",
       "outputs": [
         {
-          "path": "~/.config/gtk-3.0/gtk.css"
+          "path": "~/.config/gtk-3.0/noctalia.css"
         },
         {
-          "path": "~/.config/gtk-4.0/gtk.css"
+          "path": "~/.config/gtk-4.0/noctalia.css"
         }
       ],
-      "postProcess": mode => `gsettings set org.gnome.desktop.interface color-scheme prefer-${mode}`
+      "postProcess": mode => `gsettings set org.gnome.desktop.interface color-scheme prefer-${mode} && python3 ${gtkRefreshScript}`
     },
     {
       "id": "qt",
@@ -98,7 +103,7 @@ Singleton {
           "path": "~/.config/fuzzel/themes/noctalia"
         }
       ],
-      "postProcess": () => `${colorsApplyScript} fuzzel`
+      "postProcess": () => `${templateApplyScript} fuzzel`
     },
     {
       "id": "vicinae",
@@ -110,7 +115,7 @@ Singleton {
           "path": "~/.local/share/vicinae/themes/noctalia.toml"
         }
       ],
-      "postProcess": () => `cp --update=none ${Quickshell.shellDir}/Assets/noctalia.svg ~/.local/share/vicinae/themes/noctalia.svg && ${colorsApplyScript} vicinae`
+      "postProcess": () => `cp --update=none ${Quickshell.shellDir}/Assets/noctalia.svg ~/.local/share/vicinae/themes/noctalia.svg && ${templateApplyScript} vicinae`
     },
     {
       "id": "walker",
@@ -122,7 +127,7 @@ Singleton {
           "path": "~/.config/walker/themes/noctalia/style.css"
         }
       ],
-      "postProcess": () => `${colorsApplyScript} walker`,
+      "postProcess": () => `${templateApplyScript} walker`,
       "strict": true // Use strict mode for palette generation (preserves custom surface/outline values)
     },
     {
@@ -135,59 +140,50 @@ Singleton {
           "path": "~/.cache/wal/colors.json"
         }
       ],
-      "postProcess": mode => `${colorsApplyScript} pywalfox ${mode}`
+      "postProcess": mode => `${templateApplyScript} pywalfox ${mode}`
     } // CONSOLIDATED DISCORD CLIENTS
     ,
     {
       "id": "discord",
       "name": "Discord",
       "category": "misc",
-      "input": "vesktop.css",
+      "input": ["discord-midnight.css", "discord-material.css"],
       "clients": [
         {
           "name": "vesktop",
-          "path": "~/.config/vesktop",
-          "requiresThemesFolder": false
+          "path": "~/.config/vesktop"
         },
         {
           "name": "webcord",
-          "path": "~/.config/webcord",
-          "requiresThemesFolder": false
+          "path": "~/.config/webcord"
         },
         {
           "name": "armcord",
-          "path": "~/.config/armcord",
-          "requiresThemesFolder": false
+          "path": "~/.config/armcord"
         },
         {
           "name": "equibop",
-          "path": "~/.config/equibop",
-          "requiresThemesFolder": false
+          "path": "~/.config/equibop"
         },
         {
           "name": "equicord",
-          "path": "~/.config/Equicord",
-          "requiresThemesFolder": false
+          "path": "~/.config/Equicord"
         },
         {
           "name": "lightcord",
-          "path": "~/.config/lightcord",
-          "requiresThemesFolder": false
+          "path": "~/.config/lightcord"
         },
         {
           "name": "dorion",
-          "path": "~/.config/dorion",
-          "requiresThemesFolder": false
+          "path": "~/.config/dorion"
         },
         {
           "name": "vencord",
-          "path": "~/.config/Vencord",
-          "requiresThemesFolder": false
+          "path": "~/.config/Vencord"
         },
         {
           "name": "betterdiscord",
-          "path": "~/.config/BetterDiscord",
-          "requiresThemesFolder": false
+          "path": "~/.config/BetterDiscord"
         }
       ]
     },
@@ -203,7 +199,7 @@ Singleton {
         },
         {
           "name": "codium",
-          "path": "~/.vscode-oss/extensions/noctalia.noctaliatheme-0.0.5/themes/NoctaliaTheme-color-theme.json"
+          "path": "~/.vscode-oss/extensions/noctalia.noctaliatheme-0.0.5-universal/themes/NoctaliaTheme-color-theme.json"
         }
       ]
     },
@@ -280,7 +276,7 @@ Singleton {
           "path": "~/.config/cava/themes/noctalia"
         }
       ],
-      "postProcess": () => `${colorsApplyScript} cava`
+      "postProcess": () => `${templateApplyScript} cava`
     },
     {
       "id": "yazi",
@@ -291,22 +287,14 @@ Singleton {
         {
           "path": "~/.config/yazi/flavors/noctalia.yazi/flavor.toml"
         }
-      ]
+      ],
+      "postProcess": () => `${templateApplyScript} yazi`
     },
     {
       "id": "emacs",
       "name": "Emacs",
       "category": "editor",
-      "input": "emacs.el",
-      "outputs": [
-        {
-          "path": "~/.config/doom/themes/noctalia-theme.el"
-        },
-        {
-          "path": "~/.emacs.d/themes/noctalia-theme.el"
-        }
-      ],
-      "checkDoomFirst": true
+      "input": "emacs.el"
     },
     {
       "id": "niri",
@@ -318,7 +306,7 @@ Singleton {
           "path": "~/.config/niri/noctalia.kdl"
         }
       ],
-      "postProcess": () => `${colorsApplyScript} niri`
+      "postProcess": () => `${templateApplyScript} niri`
     },
     {
       "id": "hyprland",
@@ -330,7 +318,18 @@ Singleton {
           "path": "~/.config/hypr/noctalia/noctalia-colors.conf"
         }
       ],
-      "postProcess": () => `${colorsApplyScript} hyprland`
+      "postProcess": () => `${templateApplyScript} hyprland`
+    },
+    {
+      "id": "hyprtoolkit",
+      "name": "Hyprtoolkit",
+      "category": "system",
+      "input": "hyprtoolkit.conf",
+      "outputs": [
+        {
+          "path": "~/.config/hypr/hyprtoolkit.conf"
+        }
+      ]
     },
     {
       "id": "mango",
@@ -342,7 +341,31 @@ Singleton {
           "path": "~/.config/mango/noctalia.conf"
         }
       ],
-      "postProcess": () => `${colorsApplyScript} mango`
+      "postProcess": () => `${templateApplyScript} mango`
+    },
+    {
+      "id": "btop",
+      "name": "btop",
+      "category": "misc",
+      "input": "btop.theme",
+      "outputs": [
+        {
+          "path": "~/.config/btop/themes/noctalia.theme"
+        }
+      ],
+      "postProcess": () => `${templateApplyScript} btop`
+    },
+    {
+      "id": "zathura",
+      "name": "Zathura",
+      "category": "misc",
+      "input": "zathurarc",
+      "outputs": [
+        {
+          "path": "~/.config/zathura/noctaliarc"
+        }
+      ],
+      "postProcess": () => `${templateApplyScript} zathura`
     }
   ]
 
@@ -355,8 +378,7 @@ Singleton {
                                    clients.push({
                                                   "name": client.name,
                                                   "configPath": client.path,
-                                                  "themePath": `${client.path}/themes/noctalia.theme.css`,
-                                                  "requiresThemesFolder": client.requiresThemesFolder || false
+                                                  "themePath": `${client.path}/themes/noctalia.theme.css`
                                                 });
                                  });
     }
@@ -382,8 +404,7 @@ Singleton {
                                 clients.push({
                                                "name": client.name,
                                                "configPath": baseConfigDir,
-                                               "themePath": themePath,
-                                               "requiresThemesFolder": false
+                                               "themePath": themePath
                                              });
                               });
     }
@@ -407,14 +428,14 @@ Singleton {
     lines.push("");
     lines.push("# Remove this section and add your own templates");
     lines.push("#[templates.placeholder]");
-    lines.push("#input_path = \"" + Quickshell.shellDir + "/Assets/MatugenTemplates/noctalia.json\"");
+    lines.push("#input_path = \"" + Quickshell.shellDir + "/Assets/Templates/noctalia.json\"");
     lines.push("#output_path = \"" + Settings.cacheDir + "placeholder.json\"");
     lines.push("");
 
     return lines.join("\n") + "\n";
   }
 
-  // Write user templates TOML file (moved from MatugenTemplates)
+  // Write user templates TOML file (moved from Theming)
   function writeUserTemplatesToml() {
     var userConfigPath = Settings.configDir + "user-templates.toml";
 
@@ -439,6 +460,22 @@ Singleton {
 
     Logger.d("TemplateRegistry", "User templates config written to:", userConfigPath);
   }
+
+  // Extract Emacs clients for ProgramCheckerService compatibility
+  readonly property var emacsClients: [
+    {
+      "name": "doom",
+      "path": "~/.config/doom"
+    },
+    {
+      "name": "modern",
+      "path": "~/.config/emacs"
+    },
+    {
+      "name": "traditional",
+      "path": "~/.emacs.d"
+    }
+  ]
 
   // Process for checking if user templates file exists
   Process {

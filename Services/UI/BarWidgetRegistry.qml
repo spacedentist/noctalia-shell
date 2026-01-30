@@ -91,7 +91,8 @@ Singleton {
                                     "deviceNativePath": "",
                                     "showPowerProfiles": false,
                                     "showNoctaliaPerformance": false,
-                                    "hideIfNotDetected": true
+                                    "hideIfNotDetected": true,
+                                    "hideIfIdle": false
                                   },
                                   "Bluetooth": {
                                     "displayMode": "onhover"
@@ -185,7 +186,9 @@ Singleton {
                                   },
                                   "NotificationHistory": {
                                     "showUnreadBadge": true,
-                                    "hideWhenZero": false
+                                    "hideWhenZero": false,
+                                    "hideWhenZeroUnread": false,
+                                    "unreadBadgeColor": "primary"
                                   },
                                   "SessionMenu": {
                                     "colorName": "error"
@@ -203,6 +206,7 @@ Singleton {
                                     "showLoadAverage": false,
                                     "showMemoryUsage": true,
                                     "showMemoryAsPercent": false,
+                                    "showSwapUsage": false,
                                     "showNetworkStats": false,
                                     "showDiskUsage": false,
                                     "diskPath": "/"
@@ -246,7 +250,12 @@ Singleton {
                                     "unfocusedIconsOpacity": 1.0,
                                     "groupedBorderOpacity": 1.0,
                                     "enableScrollWheel": true,
-                                    "iconScale": 0.8
+                                    "iconScale": 0.8,
+                                    "focusedColor": "primary",
+                                    "occupiedColor": "secondary",
+                                    "emptyColor": "secondary",
+                                    "showBadge": true,
+                                    "reverseScroll": false
                                   },
                                   "Volume": {
                                     "displayMode": "onhover",

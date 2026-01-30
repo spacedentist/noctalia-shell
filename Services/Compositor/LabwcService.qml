@@ -126,7 +126,22 @@ Item {
     }
   }
 
+  function cycleKeyboardLayout() {
+    Logger.w("LabwcService", "Keyboard layout cycling not supported");
+  }
+
   function queryDisplayScales() {
     Logger.w("LabwcService", "Display scale queries not supported via ToplevelManager");
+  }
+
+  function getFocusedScreen() {
+    // de-activated until proper testing
+    return null;
+
+    // const activeToplevel = ToplevelManager.activeToplevel;
+    // if (activeToplevel && activeToplevel.screens && activeToplevel.screens.length > 0) {
+    //   return activeToplevel.screens[0];
+    // }
+    // return null;
   }
 }

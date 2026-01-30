@@ -63,6 +63,23 @@ SmartPanel {
 
   // Navigation properties
   property int selectedIndex: -1
+  property bool ignoreMouseHover: true // Transient flag, should always be true on init
+
+  // Global mouse tracking for movement detection across delegates
+  property real globalLastMouseX: 0
+  property real globalLastMouseY: 0
+  property bool globalMouseInitialized: false
+  property bool mouseTrackingReady: false // Delay tracking until panel is settled
+
+  Timer {
+    id: mouseTrackingDelayTimer
+    interval: Style.animationNormal + 50 // Wait for panel animation to complete + safety margin
+    repeat: false
+    onTriggered: {
+      root.mouseTrackingReady = true;
+      root.globalMouseInitialized = false; // Reset so we get fresh initial position
+    }
+  }
 
   // Action metadata mapping
   readonly property var actionMetadata: {
@@ -135,11 +152,16 @@ SmartPanel {
   // Lifecycle handlers
   onOpened: {
     selectedIndex = -1;
+    ignoreMouseHover = true;
+    globalMouseInitialized = false;
+    mouseTrackingReady = false;
+    mouseTrackingDelayTimer.restart();
   }
 
   onClosed: {
     cancelTimer();
     selectedIndex = -1;
+    ignoreMouseHover = true;
   }
 
   // Timer management
@@ -394,6 +416,10 @@ SmartPanel {
     activate();
   }
 
+  function onEnterPressed() {
+    activate();
+  }
+
   function onHomePressed() {
     selectFirst();
   }
@@ -455,6 +481,31 @@ SmartPanel {
       }
     }
 
+    HoverHandler {
+      id: globalHoverHandler
+
+      onPointChanged: {
+        if (!root.mouseTrackingReady) {
+          return;
+        }
+
+        if (!root.globalMouseInitialized) {
+          root.globalLastMouseX = point.position.x;
+          root.globalLastMouseY = point.position.y;
+          root.globalMouseInitialized = true;
+          return;
+        }
+
+        const deltaX = Math.abs(point.position.x - root.globalLastMouseX);
+        const deltaY = Math.abs(point.position.y - root.globalLastMouseY);
+        if (deltaX + deltaY >= 5) {
+          root.ignoreMouseHover = false;
+          root.globalLastMouseX = point.position.x;
+          root.globalLastMouseY = point.position.y;
+        }
+      }
+    }
+
     // Timer text for large buttons style (above buttons) - positioned absolutely with background
     Rectangle {
       id: timerTextContainer
@@ -502,13 +553,14 @@ SmartPanel {
         Repeater {
           model: powerOptions
           delegate: LargeButton {
-            Layout.preferredWidth: 200 * Style.uiScaleRatio
-            Layout.preferredHeight: 200 * Style.uiScaleRatio
+            Layout.preferredWidth: Math.round(200 * Style.uiScaleRatio)
+            Layout.preferredHeight: Math.round(200 * Style.uiScaleRatio)
             icon: modelData.icon
             title: modelData.title
             isShutdown: modelData.isShutdown || false
             isSelected: index === selectedIndex
             number: index + 1
+            buttonIndex: index
             onClicked: {
               selectedIndex = index;
               startTimer(modelData.action);
@@ -554,7 +606,7 @@ SmartPanel {
 
           NIconButton {
             icon: timerActive ? "stop" : "close"
-            tooltipText: timerActive ? I18n.tr("common.timer") : I18n.tr("common.close")
+            tooltipText: timerActive ? I18n.tr("session-menu.cancel-timer") : I18n.tr("common.close")
             Layout.alignment: Qt.AlignVCenter
             baseSize: Style.baseWidgetSize * 0.7
             colorBg: timerActive ? Qt.alpha(Color.mError, 0.08) : "transparent"
@@ -589,6 +641,7 @@ SmartPanel {
               isShutdown: modelData.isShutdown || false
               isSelected: index === selectedIndex
               number: index + 1
+              buttonIndex: index
               onClicked: {
                 selectedIndex = index;
                 startTimer(modelData.action);
@@ -653,16 +706,16 @@ SmartPanel {
         width: Style.marginXL
         height: width
         radius: Math.min(Style.radiusM, height / 2)
-        color: (buttonRoot.isSelected || mouseArea.containsMouse) ? Color.mPrimary : Qt.alpha(Color.mSurfaceVariant, 0.5)
+        color: (buttonRoot.isSelected || buttonRoot.effectiveHover) ? Color.mPrimary : Qt.alpha(Color.mSurfaceVariant, 0.5)
         border.width: Style.borderS
-        border.color: (buttonRoot.isSelected || mouseArea.containsMouse) ? Color.mPrimary : Color.mOutline
+        border.color: (buttonRoot.isSelected || buttonRoot.effectiveHover) ? Color.mPrimary : Color.mOutline
         visible: Settings.data.sessionMenu.showNumberLabels && buttonRoot.number > 0
 
         NText {
           anchors.centerIn: parent
           text: buttonRoot.number
           pointSize: Style.fontSizeS
-          color: (buttonRoot.isSelected || mouseArea.containsMouse) ? Color.mOnPrimary : Color.mOnSurface
+          color: (buttonRoot.isSelected || buttonRoot.effectiveHover) ? Color.mOnPrimary : Color.mOnSurface
 
           Behavior on color {
             ColorAnimation {
@@ -680,6 +733,10 @@ SmartPanel {
     property bool isShutdown: false
     property bool isSelected: false
     property int number: 0
+    property int buttonIndex: -1
+
+    // Effective hover state that respects ignoreMouseHover
+    readonly property bool effectiveHover: !root.ignoreMouseHover && mouseArea.containsMouse
 
     signal clicked
 
@@ -689,7 +746,7 @@ SmartPanel {
       if (pending) {
         return Qt.alpha(Color.mPrimary, 0.08);
       }
-      if (isSelected || mouseArea.containsMouse) {
+      if (isSelected || effectiveHover) {
         return Color.mHover;
       }
       return "transparent";
@@ -718,9 +775,9 @@ SmartPanel {
         color: {
           if (buttonRoot.pending)
             return Color.mPrimary;
-          if (buttonRoot.isShutdown && !buttonRoot.isSelected && !mouseArea.containsMouse)
+          if (buttonRoot.isShutdown && !buttonRoot.isSelected && !buttonRoot.effectiveHover)
             return Color.mError;
-          if (buttonRoot.isSelected || mouseArea.containsMouse)
+          if (buttonRoot.isSelected || buttonRoot.effectiveHover)
             return Color.mOnHover;
           return Color.mOnSurface;
         }
@@ -753,9 +810,9 @@ SmartPanel {
           color: {
             if (buttonRoot.pending)
               return Color.mPrimary;
-            if (buttonRoot.isShutdown && !buttonRoot.isSelected && !mouseArea.containsMouse)
+            if (buttonRoot.isShutdown && !buttonRoot.isSelected && !buttonRoot.effectiveHover)
               return Color.mError;
-            if (buttonRoot.isSelected || mouseArea.containsMouse)
+            if (buttonRoot.isSelected || buttonRoot.effectiveHover)
               return Color.mOnHover;
             return Color.mOnSurface;
           }
@@ -788,7 +845,7 @@ SmartPanel {
           text: buttonRoot.number
           pointSize: Style.fontSizeS
           color: {
-            if (buttonRoot.isSelected || mouseArea.containsMouse)
+            if (buttonRoot.isSelected || buttonRoot.effectiveHover)
               return Color.mOnHover;
             return Color.mOnSurface;
           }
@@ -809,6 +866,12 @@ SmartPanel {
       hoverEnabled: true
       cursorShape: Qt.PointingHandCursor
 
+      onEntered: {
+        if (!root.ignoreMouseHover) {
+          selectedIndex = buttonRoot.buttonIndex;
+        }
+      }
+
       onClicked: buttonRoot.clicked()
     }
   }
@@ -823,17 +886,21 @@ SmartPanel {
     property bool isShutdown: false
     property bool isSelected: false
     property int number: 0
+    property int buttonIndex: -1
+
+    // Effective hover state that respects ignoreMouseHover
+    readonly property bool effectiveHover: !root.ignoreMouseHover && mouseArea.containsMouse
 
     signal clicked
 
-    property real hoverScale: (isSelected || mouseArea.containsMouse) ? 1.05 : 1.0
+    property real hoverScale: (isSelected || effectiveHover) ? 1.05 : 1.0
 
     radius: Style.radiusL
     color: {
       if (pending) {
         return Qt.alpha(Color.mPrimary, 1.0);
       }
-      if (isSelected || mouseArea.containsMouse) {
+      if (isSelected || effectiveHover) {
         return Qt.alpha(Color.mPrimary, 1.0);
       }
       return Qt.alpha(Color.mSurfaceVariant, Settings.data.ui.panelBackgroundOpacity);
@@ -841,6 +908,9 @@ SmartPanel {
 
     border.width: Style.borderS
     border.color: Color.mOutline
+
+    layer.enabled: hoverScale !== 1.0
+    layer.smooth: true
 
     // Scale transform for hover effect
     transform: Scale {
@@ -885,19 +955,22 @@ SmartPanel {
         color: {
           if (largeButtonRoot.pending)
             return Color.mOnPrimary;
-          if (largeButtonRoot.isShutdown && !largeButtonRoot.isSelected && !mouseArea.containsMouse)
+          if (largeButtonRoot.isShutdown && !largeButtonRoot.isSelected && !largeButtonRoot.effectiveHover)
             return Color.mError;
-          if (largeButtonRoot.isSelected || mouseArea.containsMouse)
+          if (largeButtonRoot.isSelected || largeButtonRoot.effectiveHover)
             return Color.mOnPrimary;
           return Color.mOnSurface;
         }
-        pointSize: Style.fontSizeXXXL * 2
-        width: 80 * Style.uiScaleRatio
-        height: 80 * Style.uiScaleRatio
+        pointSize: Style.fontSizeXXXL * 2.25
+        width: 90 * Style.uiScaleRatio
+        height: 90 * Style.uiScaleRatio
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
 
-        property real iconScale: (largeButtonRoot.isSelected || mouseArea.containsMouse) ? 1.1 : 1.0
+        property real iconScale: (largeButtonRoot.isSelected || largeButtonRoot.effectiveHover) ? 1.15 : 1.0
+
+        layer.enabled: iconScale !== 1.0
+        layer.smooth: true
 
         transform: Scale {
           origin.x: iconElement.width / 2
@@ -931,9 +1004,9 @@ SmartPanel {
         color: {
           if (largeButtonRoot.pending)
             return Color.mOnPrimary;
-          if (largeButtonRoot.isShutdown && !largeButtonRoot.isSelected && !mouseArea.containsMouse)
+          if (largeButtonRoot.isShutdown && !largeButtonRoot.isSelected && !largeButtonRoot.effectiveHover)
             return Color.mError;
-          if (largeButtonRoot.isSelected || mouseArea.containsMouse)
+          if (largeButtonRoot.isSelected || largeButtonRoot.effectiveHover)
             return Color.mOnPrimary;
           return Color.mOnSurface;
         }
@@ -967,7 +1040,7 @@ SmartPanel {
         text: largeButtonRoot.number
         pointSize: Style.fontSizeM
         color: {
-          if (largeButtonRoot.isSelected || mouseArea.containsMouse)
+          if (largeButtonRoot.isSelected || largeButtonRoot.effectiveHover)
             return Color.mOnPrimary;
           return Color.mOnSurface;
         }
@@ -986,6 +1059,12 @@ SmartPanel {
       anchors.fill: parent
       hoverEnabled: true
       cursorShape: Qt.PointingHandCursor
+
+      onEntered: {
+        if (!root.ignoreMouseHover) {
+          selectedIndex = largeButtonRoot.buttonIndex;
+        }
+      }
 
       onClicked: largeButtonRoot.clicked()
     }

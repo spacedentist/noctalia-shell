@@ -12,6 +12,21 @@ import qs.Widgets
 
 ColumnLayout {
   id: root
+  opacity: 0
+
+  onSystemInfoLoadingChanged: {
+    if (!systemInfoLoading)
+      tabAppearAnim.start();
+  }
+
+  NumberAnimation on opacity {
+    id: tabAppearAnim
+    from: 0
+    to: 1
+    duration: Style.animationSlowest
+    easing.type: Easing.OutCubic
+    running: false
+  }
 
   property string latestVersion: GitHubService.latestVersion
   property string currentVersion: UpdateService.currentVersion
@@ -85,9 +100,7 @@ ColumnLayout {
       monitors: monitors,
       ui: {
         scaleRatio: Settings.data.general.scaleRatio,
-        fontDefault: Settings.data.ui.fontDefault || "default",
         fontDefaultScale: Settings.data.ui.fontDefaultScale,
-        fontFixed: Settings.data.ui.fontFixed || "default",
         fontFixedScale: Settings.data.ui.fontFixedScale
       }
     };
@@ -113,6 +126,7 @@ ColumnLayout {
       const os = root.getModule("OS");
       const kernel = root.getModule("Kernel");
       const title = root.getModule("Title");
+      const product = root.getModule("Host");
       const cpu = root.getModule("CPU");
       const gpu = root.getModule("GPU");
       const mem = root.getModule("Memory");
@@ -120,6 +134,7 @@ ColumnLayout {
       info += "OS: " + (os?.result?.prettyName || "N/A") + "\n";
       info += "Kernel: " + (kernel?.result?.release || "N/A") + "\n";
       info += "Host: " + (title?.result?.hostName || "N/A") + "\n";
+      info += "Product: " + (product?.result?.name || "N/A") + "\n";
       info += "CPU: " + (cpu?.result?.cpu || "N/A") + "\n";
       if (gpu?.result && Array.isArray(gpu.result) && gpu.result.length > 0) {
         info += "GPU: " + gpu.result.map(g => g.name || "Unknown").join(", ") + "\n";
@@ -145,7 +160,9 @@ ColumnLayout {
   }
 
   Component.onCompleted: {
-    fastfetchProcess.running = true;
+    // Check if fastfetch is available before trying to run it
+    checkFastfetchProcess.running = true;
+
     Logger.d("VersionSubTab", "Current version:", root.currentVersion);
     Logger.d("VersionSubTab", "Is git version:", root.isGitVersion);
     // Only fetch commit info for -git versions
@@ -286,6 +303,29 @@ ColumnLayout {
     stderr: StdioCollector {}
   }
 
+  // Check if fastfetch is available before attempting to run it
+  Process {
+    id: checkFastfetchProcess
+    command: ["sh", "-c", "command -v fastfetch"]
+    running: false
+
+    onExited: function (exitCode) {
+      if (exitCode === 0) {
+        // fastfetch is available, run it
+        Logger.d("VersionSubTab", "fastfetch found, running it");
+        fastfetchProcess.running = true;
+      } else {
+        // fastfetch not found, show error state immediately
+        Logger.w("VersionSubTab", "fastfetch not found");
+        root.systemInfoLoading = false;
+        root.systemInfoAvailable = false;
+      }
+    }
+
+    stdout: StdioCollector {}
+    stderr: StdioCollector {}
+  }
+
   Process {
     id: fastfetchProcess
     command: ["fastfetch", "--format", "json", "--config", "none"]
@@ -310,11 +350,6 @@ ColumnLayout {
     stderr: StdioCollector {}
   }
 
-  NHeader {
-    label: I18n.tr("panels.about.noctalia-title")
-    description: I18n.tr("panels.about.noctalia-desc")
-  }
-
   RowLayout {
     Layout.alignment: Qt.AlignHCenter
     spacing: Style.marginXL
@@ -329,104 +364,111 @@ ColumnLayout {
       sourceSize.height: height
       mipmap: true
       smooth: true
-      Layout.alignment: Qt.AlignVCenter
+      Layout.alignment: Qt.AlignBottom
     }
 
-    // Versions
-    GridLayout {
-      columns: 2
-      rowSpacing: Style.marginXS
-      columnSpacing: Style.marginM
-
-      NText {
-        text: I18n.tr("panels.about.noctalia-latest-version")
-        color: Color.mOnSurfaceVariant
-        Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
+    ColumnLayout {
+      NHeader {
+        label: I18n.tr("panels.about.noctalia-title")
+        // description: I18n.tr("panels.about.noctalia-desc")
       }
 
-      NText {
-        text: root.latestVersion
-        color: Color.mOnSurface
-        font.weight: Style.fontWeightBold
-      }
-
-      NText {
-        text: I18n.tr("panels.about.noctalia-installed-version")
-        color: Color.mOnSurfaceVariant
-        Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
-      }
-
-      RowLayout {
-        spacing: Style.marginS
+      // Versions
+      GridLayout {
+        columns: 2
+        rowSpacing: Style.marginXS
+        columnSpacing: Style.marginM
 
         NText {
-          text: root.currentVersion
+          text: I18n.tr("panels.about.noctalia-latest-version")
+          color: Color.mOnSurfaceVariant
+          Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
+        }
+
+        NText {
+          text: root.latestVersion
           color: Color.mOnSurface
           font.weight: Style.fontWeightBold
         }
 
-        // Update status indicator
-        NIcon {
-          id: upToDateIcon
-          visible: root.isUpToDate
-          icon: "circle-check"
-          pointSize: Style.fontSizeM
-          color: Color.mPrimary
-
-          MouseArea {
-            anchors.fill: parent
-            hoverEnabled: true
-            onEntered: TooltipService.show(upToDateIcon, I18n.tr("panels.about.up-to-date"))
-            onExited: TooltipService.hide()
-          }
+        NText {
+          text: I18n.tr("panels.about.noctalia-installed-version")
+          color: Color.mOnSurfaceVariant
+          Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
         }
 
-        NIcon {
-          id: updateAvailableIcon
-          visible: root.updateAvailable
-          icon: "arrow-up-circle"
-          pointSize: Style.fontSizeS
-          color: Color.mPrimary
+        RowLayout {
+          spacing: Style.marginS
 
-          MouseArea {
-            anchors.fill: parent
-            hoverEnabled: true
-            onEntered: TooltipService.show(updateAvailableIcon, I18n.tr("panels.about.update-available"))
-            onExited: TooltipService.hide()
+          NText {
+            text: root.currentVersion
+            color: Color.mOnSurface
+            font.weight: Style.fontWeightBold
           }
-        }
-      }
 
-      NText {
-        visible: root.isGitVersion
-        text: I18n.tr("panels.about.noctalia-git-commit")
-        color: Color.mOnSurfaceVariant
-        Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
-      }
+          // Update status indicator
+          NIcon {
+            id: upToDateIcon
+            visible: root.isUpToDate
+            icon: "circle-check"
+            pointSize: Style.fontSizeM
+            color: Color.mPrimary
 
-      // Clickable git commit
-      NText {
-        id: commitText
-        visible: root.isGitVersion
-        text: root.commitInfo || I18n.tr("common.loading")
-        color: root.commitInfo ? Color.mPrimary : Color.mOnSurface
-        pointSize: Style.fontSizeXS
-        font.underline: commitMouseArea.containsMouse && root.commitInfo
-
-        MouseArea {
-          id: commitMouseArea
-          anchors.fill: parent
-          hoverEnabled: true
-          cursorShape: root.commitInfo ? Qt.PointingHandCursor : Qt.ArrowCursor
-          onEntered: {
-            if (root.commitInfo) {
-              TooltipService.show(commitText, I18n.tr("panels.about.view-commit"));
+            MouseArea {
+              anchors.fill: parent
+              hoverEnabled: true
+              onEntered: TooltipService.show(upToDateIcon, I18n.tr("panels.about.up-to-date"))
+              onExited: TooltipService.hide()
             }
           }
-          onExited: TooltipService.hide()
-          onClicked: {
-            if (root.commitInfo) {
-              Quickshell.execDetached(["xdg-open", "https://github.com/noctalia-dev/noctalia-shell/commit/" + root.commitInfo]);
+
+          NIcon {
+            id: updateAvailableIcon
+            visible: root.updateAvailable
+            icon: "arrow-up-circle"
+            pointSize: Style.fontSizeS
+            color: Color.mPrimary
+
+            MouseArea {
+              anchors.fill: parent
+              hoverEnabled: true
+              onEntered: TooltipService.show(updateAvailableIcon, I18n.tr("panels.about.update-available"))
+              onExited: TooltipService.hide()
+            }
+          }
+        }
+
+        NText {
+          visible: root.isGitVersion
+          text: I18n.tr("panels.about.noctalia-git-commit")
+          color: Color.mOnSurfaceVariant
+          Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
+        }
+
+        // Clickable git commit
+        NText {
+          id: commitText
+          visible: root.isGitVersion
+          text: root.commitInfo || I18n.tr("common.loading")
+          color: root.commitInfo ? Color.mPrimary : Color.mOnSurface
+          pointSize: Style.fontSizeXS
+          font.underline: commitMouseArea.containsMouse && root.commitInfo
+
+          MouseArea {
+            id: commitMouseArea
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: root.commitInfo ? Qt.PointingHandCursor : Qt.ArrowCursor
+            onEntered: {
+              if (root.commitInfo) {
+                TooltipService.show(commitText, I18n.tr("panels.about.view-commit"));
+              }
+            }
+            onExited: TooltipService.hide()
+            onClicked: {
+              if (root.commitInfo) {
+                Quickshell.execDetached(["xdg-open", "https://github.com/noctalia-dev/noctalia-shell/commit/" + root.commitInfo]);
+              }
             }
           }
         }
@@ -451,54 +493,36 @@ ColumnLayout {
       }
     }
 
-    // NButton {
-    //   icon: "heart"
-    //   text: I18n.tr("panels.about.support")
-    //   outlined: true
-    //   onClicked: {
-    //     Quickshell.execDetached(["xdg-open", "https://ko-fi.com/lysec"]);
-    //     ToastService.showNotice(I18n.tr("panels.about.support"), I18n.tr("toast.kofi-opened"));
-    //   }
-    // }
-
     NButton {
       icon: "copy"
       text: I18n.tr("panels.about.copy-info")
       outlined: true
       onClicked: root.copyInfoToClipboard()
     }
+
+    NButton {
+      icon: "heart"
+      text: I18n.tr("panels.about.support")
+      outlined: true
+      onClicked: {
+        Quickshell.execDetached(["xdg-open", "https://buymeacoffee.com/noctalia"]);
+        ToastService.showNotice(I18n.tr("panels.about.support"), I18n.tr("toast.kofi-opened"));
+      }
+    }
   }
 
   // System Information Section
   NDivider {
     Layout.fillWidth: true
-    Layout.topMargin: Style.marginM
   }
 
   NHeader {
     label: I18n.tr("panels.about.system-title")
-    Layout.topMargin: Style.marginM
-  }
-
-  // Loading state
-  RowLayout {
-    visible: root.systemInfoLoading
-    Layout.fillWidth: true
-    spacing: Style.marginS
-
-    NBusyIndicator {
-      running: root.systemInfoLoading
-    }
-
-    NText {
-      text: I18n.tr("panels.about.system-loading")
-      color: Color.mOnSurfaceVariant
-    }
   }
 
   // Error state (fastfetch not installed)
   ColumnLayout {
-    visible: !root.systemInfoLoading && !root.systemInfoAvailable
+    visible: !root.systemInfoAvailable
     Layout.fillWidth: true
     spacing: Style.marginS
 
@@ -510,13 +534,16 @@ ColumnLayout {
     NText {
       text: I18n.tr("panels.about.system-install-hint")
       color: Color.mOnSurfaceVariant
-      font.pointSize: Style.fontSizeXS
+      pointSize: Style.fontSizeXS
     }
   }
 
   // System info grid
   GridLayout {
-    visible: !root.systemInfoLoading && root.systemInfoAvailable && root.systemInfo
+    id: sysInfo
+    readonly property real textSize: Style.fontSizeS
+
+    visible: root.systemInfoAvailable && root.systemInfo
     Layout.fillWidth: true
     columns: 2
     rowSpacing: Style.marginXS
@@ -526,6 +553,7 @@ ColumnLayout {
     NText {
       text: I18n.tr("panels.about.system-os")
       color: Color.mOnSurfaceVariant
+      pointSize: sysInfo.textSize
     }
     NText {
       text: {
@@ -533,6 +561,7 @@ ColumnLayout {
         return os?.result?.prettyName || "N/A";
       }
       color: Color.mOnSurface
+      pointSize: sysInfo.textSize
       Layout.fillWidth: true
       wrapMode: Text.Wrap
     }
@@ -541,6 +570,7 @@ ColumnLayout {
     NText {
       text: I18n.tr("panels.about.system-kernel")
       color: Color.mOnSurfaceVariant
+      pointSize: sysInfo.textSize
     }
     NText {
       text: {
@@ -548,6 +578,7 @@ ColumnLayout {
         return kernel?.result?.release || "N/A";
       }
       color: Color.mOnSurface
+      pointSize: sysInfo.textSize
       Layout.fillWidth: true
       wrapMode: Text.Wrap
     }
@@ -556,6 +587,7 @@ ColumnLayout {
     NText {
       text: I18n.tr("panels.about.system-host")
       color: Color.mOnSurfaceVariant
+      pointSize: sysInfo.textSize
     }
     NText {
       text: {
@@ -563,6 +595,24 @@ ColumnLayout {
         return title?.result?.hostName || "N/A";
       }
       color: Color.mOnSurface
+      pointSize: sysInfo.textSize
+      Layout.fillWidth: true
+      wrapMode: Text.Wrap
+    }
+
+    // Product name
+    NText {
+      text: I18n.tr("panels.about.system-product")
+      color: Color.mOnSurfaceVariant
+      pointSize: sysInfo.textSize
+    }
+    NText {
+      text: {
+        const title = root.getModule("Host");
+        return title?.result?.name || "N/A";
+      }
+      color: Color.mOnSurface
+      pointSize: sysInfo.textSize
       Layout.fillWidth: true
       wrapMode: Text.Wrap
     }
@@ -571,6 +621,7 @@ ColumnLayout {
     NText {
       text: I18n.tr("panels.about.system-uptime")
       color: Color.mOnSurfaceVariant
+      pointSize: sysInfo.textSize
     }
     NText {
       text: {
@@ -578,6 +629,7 @@ ColumnLayout {
         return value ? Time.formatVagueHumanReadableDuration(value / 1000) : "-";
       }
       color: Color.mOnSurface
+      pointSize: sysInfo.textSize
       Layout.fillWidth: true
       wrapMode: Text.Wrap
     }
@@ -586,6 +638,7 @@ ColumnLayout {
     NText {
       text: I18n.tr("panels.about.system-cpu")
       color: Color.mOnSurfaceVariant
+      pointSize: sysInfo.textSize
     }
     NText {
       text: {
@@ -600,6 +653,7 @@ ColumnLayout {
         return cpuText;
       }
       color: Color.mOnSurface
+      pointSize: sysInfo.textSize
       Layout.fillWidth: true
       wrapMode: Text.Wrap
     }
@@ -608,6 +662,7 @@ ColumnLayout {
     NText {
       text: I18n.tr("panels.about.system-gpu")
       color: Color.mOnSurfaceVariant
+      pointSize: sysInfo.textSize
     }
     NText {
       text: {
@@ -617,6 +672,7 @@ ColumnLayout {
         return gpu.result.map(g => g.name || "Unknown").join(", ");
       }
       color: Color.mOnSurface
+      pointSize: sysInfo.textSize
       Layout.fillWidth: true
       wrapMode: Text.Wrap
     }
@@ -625,6 +681,7 @@ ColumnLayout {
     NText {
       text: I18n.tr("panels.about.system-memory")
       color: Color.mOnSurfaceVariant
+      pointSize: sysInfo.textSize
     }
     NText {
       text: {
@@ -636,6 +693,7 @@ ColumnLayout {
         return used + " / " + total;
       }
       color: Color.mOnSurface
+      pointSize: sysInfo.textSize
       Layout.fillWidth: true
       wrapMode: Text.Wrap
     }
@@ -644,6 +702,7 @@ ColumnLayout {
     NText {
       text: I18n.tr("panels.about.system-disk")
       color: Color.mOnSurfaceVariant
+      pointSize: sysInfo.textSize
     }
     NText {
       text: {
@@ -658,6 +717,7 @@ ColumnLayout {
         return used + " / " + total + " (" + rootDisk.filesystem + ")";
       }
       color: Color.mOnSurface
+      pointSize: sysInfo.textSize
       Layout.fillWidth: true
       wrapMode: Text.Wrap
     }
@@ -666,6 +726,7 @@ ColumnLayout {
     NText {
       text: I18n.tr("panels.about.system-wm")
       color: Color.mOnSurfaceVariant
+      pointSize: sysInfo.textSize
     }
     NText {
       text: {
@@ -679,6 +740,7 @@ ColumnLayout {
         return wmText;
       }
       color: Color.mOnSurface
+      pointSize: sysInfo.textSize
       Layout.fillWidth: true
       wrapMode: Text.Wrap
     }
@@ -687,6 +749,7 @@ ColumnLayout {
     NText {
       text: I18n.tr("panels.about.system-packages")
       color: Color.mOnSurfaceVariant
+      pointSize: sysInfo.textSize
     }
     NText {
       text: {
@@ -722,6 +785,7 @@ ColumnLayout {
         return "N/A";
       }
       color: Color.mOnSurface
+      pointSize: sysInfo.textSize
       Layout.fillWidth: true
       wrapMode: Text.Wrap
     }
@@ -745,6 +809,7 @@ ColumnLayout {
           return name + ": " + (screen?.width || 0) + "x" + (screen?.height || 0) + " @ " + scaleValue + "x";
         }
         color: isLabel ? Color.mOnSurfaceVariant : Color.mOnSurface
+        pointSize: sysInfo.textSize
         Layout.fillWidth: !isLabel
         wrapMode: Text.Wrap
       }
@@ -769,10 +834,21 @@ ColumnLayout {
     onToggled: checked => Settings.data.general.telemetryEnabled = checked
   }
 
-  NButton {
-    icon: "eye"
-    text: I18n.tr("panels.about.telemetry-show-data")
-    outlined: true
-    onClicked: root.copyTelemetryData()
+  RowLayout {
+    spacing: Style.marginM
+
+    NButton {
+      icon: "eye"
+      text: I18n.tr("panels.about.telemetry-show-data")
+      outlined: true
+      onClicked: root.copyTelemetryData()
+    }
+
+    NButton {
+      icon: "shield-lock"
+      text: I18n.tr("panels.about.privacy-policy")
+      outlined: true
+      onClicked: Quickshell.execDetached(["xdg-open", "https://noctalia.dev/privacy"])
+    }
   }
 }

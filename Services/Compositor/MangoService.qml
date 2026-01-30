@@ -673,4 +673,19 @@ Item {
   function logout() {
     Quickshell.execDetached(["mmsg", "-s", "-q"]);
   }
+
+  function cycleKeyboardLayout() {
+    Logger.w("MangoService", "Keyboard layout cycling not supported");
+  }
+
+  function getFocusedScreen() {
+    // de-activated until proper testing
+    return null;
+
+    // const activeToplevel = ToplevelManager.activeToplevel;
+    // if (activeToplevel && activeToplevel.screens && activeToplevel.screens.length > 0) {
+    //   return activeToplevel.screens[0];
+    // }
+    // return null;
+  }
 }

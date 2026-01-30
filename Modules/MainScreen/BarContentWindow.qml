@@ -29,12 +29,15 @@ PanelWindow {
   WlrLayershell.layer: WlrLayer.Top
   WlrLayershell.exclusionMode: ExclusionMode.Ignore // Don't reserve space - BarExclusionZone in MainScreen handles that
 
-  // Position and size to match bar location
-  readonly property string barPosition: Settings.data.bar.position || "top"
+  // Position and size to match bar location (per-screen)
+  readonly property string barPosition: Settings.getBarPositionForScreen(barWindow.screen?.name)
   readonly property bool barIsVertical: barPosition === "left" || barPosition === "right"
+  readonly property bool isFramed: Settings.data.bar.barType === "framed"
+  readonly property real frameThickness: Settings.data.bar.frameThickness ?? 12
   readonly property bool barFloating: Settings.data.bar.floating || false
   readonly property real barMarginH: Math.ceil(barFloating ? Settings.data.bar.marginHorizontal : 0)
   readonly property real barMarginV: Math.ceil(barFloating ? Settings.data.bar.marginVertical : 0)
+  readonly property real barHeight: Style.getBarHeightForScreen(barWindow.screen?.name)
 
   // Anchor to the bar's edge
   anchors {
@@ -44,17 +47,17 @@ PanelWindow {
     right: barPosition === "right" || !barIsVertical
   }
 
-  // Handle floating margins
+  // Handle floating margins and framed mode offsets
   margins {
-    top: barPosition === "top" || barIsVertical ? barMarginV : 0
-    bottom: barPosition === "bottom" || barIsVertical ? barMarginV : 0
-    left: barPosition === "left" || !barIsVertical ? barMarginH : 0
-    right: barPosition === "right" || !barIsVertical ? barMarginH : 0
+    top: (barPosition === "top") ? barMarginV : (isFramed ? frameThickness : barMarginV)
+    bottom: (barPosition === "bottom") ? barMarginV : (isFramed ? frameThickness : barMarginV)
+    left: (barPosition === "left") ? barMarginH : (isFramed ? frameThickness : barMarginH)
+    right: (barPosition === "right") ? barMarginH : (isFramed ? frameThickness : barMarginH)
   }
 
   // Set a tight window size
-  implicitWidth: barIsVertical ? Style.barHeight : barWindow.screen.width
-  implicitHeight: barIsVertical ? barWindow.screen.height : Style.barHeight
+  implicitWidth: barIsVertical ? barHeight : barWindow.screen.width
+  implicitHeight: barIsVertical ? barWindow.screen.height : barHeight
 
   // Bar content - just the widgets, no background
   Bar {

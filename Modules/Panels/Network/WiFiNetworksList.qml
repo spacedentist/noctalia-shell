@@ -249,8 +249,9 @@ NBox {
               // Info toggle for connected network
               NIconButton {
                 visible: modelData.connected && NetworkService.disconnectingFrom !== modelData.ssid
-                icon: "info-circle"
+                icon: "info"
                 tooltipText: I18n.tr("common.info")
+                baseSize: Style.baseWidgetSize * 0.8
                 onClicked: {
                   if (root.infoSsid === modelData.ssid) {
                     root.infoSsid = "";
@@ -265,6 +266,7 @@ NBox {
                 visible: (modelData.existing || modelData.cached) && !modelData.connected && NetworkService.connectingTo !== modelData.ssid && NetworkService.forgettingNetwork !== modelData.ssid && NetworkService.disconnectingFrom !== modelData.ssid
                 icon: "trash"
                 tooltipText: I18n.tr("tooltips.forget-network")
+                baseSize: Style.baseWidgetSize * 0.8
                 onClicked: root.forgetRequested(modelData.ssid)
               }
 
@@ -278,7 +280,7 @@ NBox {
                   return I18n.tr("common.password");
                 }
                 outlined: !hovered
-                fontSize: Style.fontSizeXS
+                fontSize: Style.fontSizeS
                 enabled: !NetworkService.connecting
                 onClicked: {
                   if (modelData.existing || modelData.cached || !NetworkService.isSecured(modelData.security)) {
@@ -327,6 +329,7 @@ NBox {
               // Use Tabler layout icons; "grid" alone doesn't exist in our font
               icon: root.detailsGrid ? "layout-list" : "layout-grid"
               tooltipText: root.detailsGrid ? I18n.tr("tooltips.list-view") : I18n.tr("tooltips.grid-view")
+              baseSize: Style.baseWidgetSize * 0.8
               onClicked: {
                 root.detailsGrid = !root.detailsGrid;
                 if (Settings.data && Settings.data.ui) {
@@ -354,10 +357,13 @@ NBox {
               }
 
               // Icons only; values have labels as tooltips on hover
-              // Row 1: Interface | Band
+              // --- Item 1: Interface ---
+              // Grid: Row 0, Col 0 | List: Row 0
               RowLayout {
                 Layout.fillWidth: true
                 Layout.preferredWidth: 1
+                Layout.row: 0
+                Layout.column: 0
                 spacing: Style.marginXS
                 NIcon {
                   icon: "network"
@@ -402,8 +408,12 @@ NBox {
                   }
                 }
               }
+              // --- Item 2: Frequency (Band) ---
+              // Grid: Row 1, Col 0 | List: Row 1
               RowLayout {
                 Layout.fillWidth: true
+                Layout.row: 1
+                Layout.column: 0
                 spacing: Style.marginXS
                 NIcon {
                   icon: "router"
@@ -429,9 +439,12 @@ NBox {
                 }
               }
 
-              // Row 2: Link Speed | IPv4
+              // --- Item 3: Link Speed ---
+              // Grid: Row 2, Col 0 | List: Row 2
               RowLayout {
                 Layout.fillWidth: true
+                Layout.row: 2
+                Layout.column: 0
                 spacing: Style.marginXS
                 NIcon {
                   icon: "gauge"
@@ -457,8 +470,44 @@ NBox {
                   clip: true
                 }
               }
+
+              // --- Item 4: Gateway ---
+              // Grid: Row 2, Col 1 | List: Row 5 (Last)
               RowLayout {
                 Layout.fillWidth: true
+                Layout.row: root.detailsGrid ? 2 : 5
+                Layout.column: root.detailsGrid ? 1 : 0
+                spacing: Style.marginXS
+                NIcon {
+                  icon: "router"
+                  pointSize: Style.fontSizeXS
+                  color: Color.mOnSurface
+                  Layout.alignment: Qt.AlignVCenter
+                  MouseArea {
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    onEntered: TooltipService.show(parent, I18n.tr("common.gateway"))
+                    onExited: TooltipService.hide()
+                  }
+                }
+                NText {
+                  text: NetworkService.activeWifiDetails.gateway4 || "-"
+                  pointSize: Style.fontSizeXS
+                  color: Color.mOnSurface
+                  Layout.fillWidth: true
+                  Layout.alignment: Qt.AlignVCenter
+                  wrapMode: root.detailsGrid ? Text.NoWrap : Text.WrapAtWordBoundaryOrAnywhere
+                  elide: root.detailsGrid ? Text.ElideRight : Text.ElideNone
+                  maximumLineCount: root.detailsGrid ? 1 : 6
+                  clip: true
+                }
+              }
+              // --- Item 5: IPv4 ---
+              // Grid: Row 0, Col 1 | List: Row 3
+              RowLayout {
+                Layout.fillWidth: true
+                Layout.row: root.detailsGrid ? 0 : 3
+                Layout.column: root.detailsGrid ? 1 : 0
                 spacing: Style.marginXS
                 NIcon {
                   // IPv4 address icon ("device-lan" doesn't exist in our font)
@@ -502,37 +551,12 @@ NBox {
                   }
                 }
               }
-
-              // Row 3: Gateway | DNS
+              // --- Item 6: DNS ---
+              // Grid: Row 1, Col 1 | List: Row 4
               RowLayout {
                 Layout.fillWidth: true
-                spacing: Style.marginXS
-                NIcon {
-                  icon: "router"
-                  pointSize: Style.fontSizeXS
-                  color: Color.mOnSurface
-                  Layout.alignment: Qt.AlignVCenter
-                  MouseArea {
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    onEntered: TooltipService.show(parent, I18n.tr("common.gateway"))
-                    onExited: TooltipService.hide()
-                  }
-                }
-                NText {
-                  text: NetworkService.activeWifiDetails.gateway4 || "-"
-                  pointSize: Style.fontSizeXS
-                  color: Color.mOnSurface
-                  Layout.fillWidth: true
-                  Layout.alignment: Qt.AlignVCenter
-                  wrapMode: root.detailsGrid ? Text.NoWrap : Text.WrapAtWordBoundaryOrAnywhere
-                  elide: root.detailsGrid ? Text.ElideRight : Text.ElideNone
-                  maximumLineCount: root.detailsGrid ? 1 : 6
-                  clip: true
-                }
-              }
-              RowLayout {
-                Layout.fillWidth: true
+                Layout.row: root.detailsGrid ? 1 : 4
+                Layout.column: root.detailsGrid ? 1 : 0
                 spacing: Style.marginXS
                 // DNS: allow wrapping when selected
                 NIcon {
@@ -621,7 +645,7 @@ NBox {
 
               NButton {
                 text: I18n.tr("common.connect")
-                fontSize: Style.fontSizeXXS
+                fontSize: Style.fontSizeS
                 enabled: pwdInput.text.length > 0 && !NetworkService.connecting
                 outlined: true
                 onClicked: root.passwordSubmitted(modelData.ssid, pwdInput.text)
@@ -629,7 +653,7 @@ NBox {
 
               NIconButton {
                 icon: "close"
-                baseSize: Style.baseWidgetSize
+                baseSize: Style.baseWidgetSize * 0.8
                 onClicked: root.passwordCancelled()
               }
             }
@@ -677,7 +701,7 @@ NBox {
 
               NIconButton {
                 icon: "close"
-                baseSize: Style.baseWidgetSize
+                baseSize: Style.baseWidgetSize * 0.8
                 onClicked: root.forgetCancelled()
               }
             }

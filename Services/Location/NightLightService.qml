@@ -65,7 +65,7 @@ Singleton {
       apply();
       // Toast: night light toggled
       const enabled = !!Settings.data.nightLight.enabled;
-      ToastService.showNotice(I18n.tr("common.night-light"), enabled ? I18n.tr("toast.wifi.enabled") : I18n.tr("toast.wifi.disabled"), enabled ? "nightlight-on" : "nightlight-off");
+      ToastService.showNotice(I18n.tr("common.night-light"), enabled ? I18n.tr("common.enabled") : I18n.tr("common.disabled"), enabled ? "nightlight-on" : "nightlight-off");
     }
     function onForcedChanged() {
       apply();
@@ -85,8 +85,16 @@ Singleton {
     target: LocationService
     function onCoordinatesReadyChanged() {
       if (LocationService.coordinatesReady) {
-        apply();
+        root.apply();
       }
+    }
+  }
+
+  Connections {
+    target: Time
+    function onResumed() {
+      Logger.i("NightLight", "System resumed - re-applying night light");
+      root.apply();
     }
   }
 
