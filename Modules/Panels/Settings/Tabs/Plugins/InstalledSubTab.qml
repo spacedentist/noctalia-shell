@@ -32,6 +32,37 @@ ColumnLayout {
     }
   }
 
+  // Auto-update toggle
+  RowLayout {
+    spacing: Style.marginM
+    Layout.fillWidth: true
+
+    ColumnLayout {
+      spacing: Style.marginXS
+      Layout.fillWidth: true
+
+      NText {
+        text: I18n.tr("panels.plugins.auto-update")
+        color: Color.mOnSurface
+      }
+
+      NText {
+        text: I18n.tr("panels.plugins.auto-update-description")
+        font.pointSize: Style.fontSizeXS
+        color: Color.mOnSurfaceVariant
+        wrapMode: Text.WordWrap
+        Layout.fillWidth: true
+      }
+    }
+
+    NToggle {
+      checked: Settings.data.plugins.autoUpdate
+      onToggled: checked => {
+                   Settings.data.plugins.autoUpdate = checked;
+                 }
+    }
+  }
+
   // Update All button
   NButton {
     property int updateCount: Object.keys(PluginService.pluginUpdates).length
@@ -41,7 +72,7 @@ ColumnLayout {
                     "count": updateCount
                   })
     icon: "download"
-    visible: updateCount >= 2
+    visible: (updateCount > 0)
     enabled: !isUpdating
     backgroundColor: Color.mPrimary
     textColor: Color.mOnPrimary
@@ -456,6 +487,8 @@ ColumnLayout {
   function uninstallPlugin(pluginId) {
     var manifest = PluginRegistry.getPluginManifest(pluginId);
     var pluginName = manifest?.name || pluginId;
+
+    BarService.widgetsRevision++;
 
     ToastService.showNotice(I18n.tr("panels.plugins.title"), I18n.tr("panels.plugins.uninstalling", {
                                                                        "plugin": pluginName

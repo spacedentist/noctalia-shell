@@ -66,6 +66,8 @@ Item {
   property var pinned: widgetSettings.pinned || widgetMetadata.pinned || [] // Pinned items (shown inline)
   property bool drawerEnabled: widgetSettings.drawerEnabled !== undefined ? widgetSettings.drawerEnabled : (widgetMetadata.drawerEnabled !== undefined ? widgetMetadata.drawerEnabled : true) // Enable drawer panel
   property bool hidePassive: widgetSettings.hidePassive !== undefined ? widgetSettings.hidePassive : true // Hide passive status items
+  readonly property string chevronColorKey: widgetSettings.chevronColor !== undefined ? widgetSettings.chevronColor : widgetMetadata.chevronColor
+  readonly property color chevronColor: Color.resolveColorKey(chevronColorKey)
   property var filteredItems: [] // Items to show inline (pinned)
   property var dropdownItems: [] // Items to show in drawer (unpinned)
   property int hoveredItemIndex: -1 // Track hovered item for dot indicator
@@ -289,7 +291,8 @@ Item {
   }
 
   // Content dimensions for implicit sizing
-  readonly property real capsulePadding: Style.marginXS
+  readonly property int visibleItemCount: (root.drawerEnabled && dropdownItems.length > 0 ? 1 : 0) + filteredItems.length
+  readonly property real capsulePadding: 0
   readonly property real capsuleWidth: isVertical ? capsuleHeight : Math.round(trayFlow.implicitWidth + capsulePadding * 2)
   readonly property real capsuleContentHeight: isVertical ? Math.round(trayFlow.implicitHeight + capsulePadding * 2) : capsuleHeight
 
@@ -311,14 +314,34 @@ Item {
     border.width: Style.capsuleBorderWidth
   }
 
+  NPopupContextMenu {
+    id: chevronContextMenu
+
+    model: [
+      {
+        "label": I18n.tr("actions.widget-settings"),
+        "action": "widget-settings",
+        "icon": "settings"
+      },
+    ]
+
+    onTriggered: action => {
+                   chevronContextMenu.close();
+                   PanelService.closeContextMenu(screen);
+
+                   if (action === "widget-settings") {
+                     BarService.openWidgetSettings(screen, section, sectionWidgetIndex, widgetId, widgetSettings);
+                   }
+                 }
+  }
+
   Flow {
     id: trayFlow
     spacing: 0
     flow: isVertical ? Flow.TopToBottom : Flow.LeftToRight
 
-    // Position with padding from capsule edges
-    x: isVertical ? 0 : capsulePadding
-    y: isVertical ? capsulePadding : 0
+    // Position centered in capsule
+    anchors.centerIn: visualCapsule
 
     // Drawer opener (before items if opposite direction)
     NIconButton {
@@ -332,7 +355,7 @@ Item {
       applyUiScale: false
       customRadius: Style.radiusL
       colorBg: "transparent"
-      colorFg: Color.mOnSurface
+      colorFg: root.chevronColor
       colorBorder: "transparent"
       colorBorderHover: "transparent"
       icon: {
@@ -349,7 +372,7 @@ Item {
         }
       }
       onClicked: toggleDrawer(this)
-      onRightClicked: toggleDrawer(this)
+      onRightClicked: PanelService.showContextMenu(chevronContextMenu, this, screen)
     }
 
     // Pinned items
@@ -499,7 +522,7 @@ Item {
                              } else {
                                // For horizontal bars: center horizontally and position below visual area
                                menuX = (tooltipAnchor.width / 2) - (trayMenu.item.implicitWidth / 2);
-                               menuY = tooltipAnchor.height + Style.marginL;
+                               menuY = tooltipAnchor.height + Style.marginS;
                              }
 
                              PanelService.showTrayMenu(root.screen, modelData, trayMenu.item, tooltipAnchor, menuX, menuY, root.section, root.sectionWidgetIndex);
@@ -528,7 +551,7 @@ Item {
       applyUiScale: false
       customRadius: Style.radiusL
       colorBg: "transparent"
-      colorFg: Color.mOnSurface
+      colorFg: root.chevronColor
       colorBorder: "transparent"
       colorBorderHover: "transparent"
       icon: {
@@ -545,7 +568,7 @@ Item {
         }
       }
       onClicked: toggleDrawer(this)
-      onRightClicked: toggleDrawer(this)
+      onRightClicked: PanelService.showContextMenu(chevronContextMenu, this, screen)
     }
   } // closes Flow
 }
