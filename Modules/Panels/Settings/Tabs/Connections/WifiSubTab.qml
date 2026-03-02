@@ -34,8 +34,8 @@ ColumnLayout {
       NToggle {
         Layout.fillWidth: true
         label: I18n.tr("toast.airplane-mode.title")
-        icon: Settings.data.network.airplaneModeEnabled ? "plane" : "plane-off"
-        checked: Settings.data.network.airplaneModeEnabled
+        icon: ShellState.data.network.airplaneModeEnabled ? "plane" : "plane-off"
+        checked: ShellState.data.network.airplaneModeEnabled
         onToggled: checked => BluetoothService.setAirplaneMode(checked)
       }
 
@@ -43,10 +43,10 @@ ColumnLayout {
       NToggle {
         Layout.fillWidth: true
         label: I18n.tr("common.wifi")
-        icon: Settings.data.network.wifiEnabled ? "wifi" : "wifi-off"
-        checked: Settings.data.network.wifiEnabled
+        icon: ShellState.data.network.wifiEnabled ? "wifi" : "wifi-off"
+        checked: ShellState.data.network.wifiEnabled
         onToggled: checked => NetworkService.setWifiEnabled(checked)
-        enabled: ProgramCheckerService.nmcliAvailable && !Settings.data.network.airplaneModeEnabled && NetworkService.wifiAvailable
+        enabled: ProgramCheckerService.nmcliAvailable && !ShellState.data.network.airplaneModeEnabled && NetworkService.wifiAvailable
       }
     }
   }

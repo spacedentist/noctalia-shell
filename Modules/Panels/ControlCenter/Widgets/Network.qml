@@ -53,8 +53,8 @@ NIconButtonHot {
     panel?.toggle(this);
   }
   onRightClicked: {
-    if (!Settings.data.network.airplaneModeEnabled) {
-      NetworkService.setWifiEnabled(!Settings.data.network.wifiEnabled);
+    if (!ShellState.data.network.airplaneModeEnabled) {
+      NetworkService.setWifiEnabled(!ShellState.data.network.wifiEnabled);
     }
   }
 }

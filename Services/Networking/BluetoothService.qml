@@ -19,7 +19,7 @@ Singleton {
   readonly property BluetoothAdapter adapter: Bluetooth.defaultAdapter
 
   // Airplane mode status
-  readonly property bool airplaneModeEnabled: Settings.data.network.airplaneModeEnabled
+  readonly property bool airplaneModeEnabled: ShellState.data.network.airplaneModeEnabled
   property bool airplaneModeToggled: false
 
   // Power/blocked/availability state
@@ -138,7 +138,7 @@ Singleton {
       root.ctlPowerBlocked = state;
       root.airplaneModeToggled = true;
       NetworkService.setWifiEnabled(!state);
-      Settings.data.network.airplaneModeEnabled = state;
+      ShellState.data.network.airplaneModeEnabled = state;
       ToastService.showNotice(I18n.tr("toast.airplane-mode.title"), state ? I18n.tr("common.enabled") : I18n.tr("common.disabled"), state ? "plane" : "plane-off");
       Logger.i("AirplaneMode", state ? "Wi-Fi & Bluetooth adapter blocked" : "Wi-Fi & Bluetooth adapter unblocked");
       root.airplaneModeToggled = false;
@@ -160,13 +160,13 @@ Singleton {
         if (isAirplaneModeActive && !root.airplaneModeEnabled) {
           root.airplaneModeToggled = true;
           NetworkService.setWifiEnabled(false);
-          Settings.data.network.airplaneModeEnabled = true;
+          ShellState.data.network.airplaneModeEnabled = true;
           ToastService.showNotice(I18n.tr("toast.airplane-mode.title"), I18n.tr("common.enabled"), "plane");
           Logger.i("AirplaneMode", "Wi-Fi & Bluetooth adapter blocked");
         } else if (!isAirplaneModeActive && root.airplaneModeEnabled) {
           root.airplaneModeToggled = true;
           NetworkService.setWifiEnabled(true);
-          Settings.data.network.airplaneModeEnabled = false;
+          ShellState.data.network.airplaneModeEnabled = false;
           ToastService.showNotice(I18n.tr("toast.airplane-mode.title"), I18n.tr("common.disabled"), "plane-off");
           Logger.i("AirplaneMode", "Wi-Fi & Bluetooth adapter unblocked");
         } else if (adapter ? adapter.enabled : root.ctlPowered) {

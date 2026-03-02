@@ -596,7 +596,7 @@ Singleton {
   IpcHandler {
     target: "wifi"
     function toggle() {
-      NetworkService.setWifiEnabled(!Settings.data.network.wifiEnabled);
+      NetworkService.setWifiEnabled(!ShellState.data.network.wifiEnabled);
     }
     function enable() {
       NetworkService.setWifiEnabled(true);

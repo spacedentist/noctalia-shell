@@ -71,9 +71,9 @@ Singleton {
   }
 
   Connections {
-    target: Settings.data.network
+    target: ShellState.data.network
     function onWifiEnabledChanged() {
-      if (Settings.data.network.wifiEnabled) {
+      if (ShellState.data.network.wifiEnabled) {
         if (!BluetoothService.airplaneModeToggled) {
           ToastService.showNotice(I18n.tr("common.wifi"), I18n.tr("common.enabled"), "wifi");
         }
@@ -254,12 +254,12 @@ Singleton {
       return;
     }
     Logger.i("Wi-Fi", "SetWifiEnabled", enabled);
-    Settings.data.network.wifiEnabled = enabled;
+    ShellState.data.network.wifiEnabled = enabled;
     wifiStateEnableProcess.running = true;
   }
 
   function scan() {
-    if (!ProgramCheckerService.nmcliAvailable || !Settings.data.network.wifiEnabled) {
+    if (!ProgramCheckerService.nmcliAvailable || !ShellState.data.network.wifiEnabled) {
       return;
     }
     if (scanning) {
@@ -896,8 +896,8 @@ Singleton {
       onStreamFinished: {
         const enabled = text.trim() === "enabled";
         Logger.d("Network", "Wi-Fi adapter was detect as enabled:", enabled);
-        if (Settings.data.network.wifiEnabled !== enabled) {
-          Settings.data.network.wifiEnabled = enabled;
+        if (ShellState.data.network.wifiEnabled !== enabled) {
+          ShellState.data.network.wifiEnabled = enabled;
         }
       }
     }
@@ -914,7 +914,7 @@ Singleton {
   Process {
     id: wifiStateEnableProcess
     running: false
-    command: ["nmcli", "radio", "wifi", Settings.data.network.wifiEnabled ? "on" : "off"]
+    command: ["nmcli", "radio", "wifi", ShellState.data.network.wifiEnabled ? "on" : "off"]
 
     stdout: StdioCollector {
       onStreamFinished: {

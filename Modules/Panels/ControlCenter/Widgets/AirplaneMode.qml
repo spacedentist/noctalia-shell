@@ -8,10 +8,10 @@ import qs.Widgets
 NIconButtonHot {
   property ShellScreen screen
 
-  icon: !Settings.data.network.airplaneModeEnabled ? "plane-off" : "plane"
-  hot: Settings.data.network.airplaneModeEnabled
+  icon: !ShellState.data.network.airplaneModeEnabled ? "plane-off" : "plane"
+  hot: ShellState.data.network.airplaneModeEnabled
   tooltipText: I18n.tr("toast.airplane-mode.title")
   onClicked: {
-    BluetoothService.setAirplaneMode(!Settings.data.network.airplaneModeEnabled);
+    BluetoothService.setAirplaneMode(!ShellState.data.network.airplaneModeEnabled);
   }
 }

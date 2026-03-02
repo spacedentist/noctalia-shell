@@ -21,7 +21,7 @@ SmartPanel {
   // Info panel collapsed by default, view mode persisted in settings
   // Ethernet details UI state (mirrors Wi‑Fi info behavior)
   property bool ethernetInfoExpanded: false
-  property bool ethernetDetailsGrid: (Settings.data.network.wifiDetailsViewMode === "grid")
+  property bool ethernetDetailsGrid: (ShellState.data.ui.wifiDetailsViewMode === "grid")
 
   // Unified panel view mode: "wifi" | "ethernet" (persisted)
   property string panelViewMode: "wifi"
@@ -30,14 +30,14 @@ SmartPanel {
   onPanelViewModeChanged: {
     // Persist last view (only after restored the initial value)
     if (panelViewPersistEnabled) {
-      Settings.data.ui.networkPanelView = panelViewMode;
+      ShellState.data.ui.networkPanelView = panelViewMode;
     }
     // Reset transient states to avoid layout artifacts
     passwordSsid = "";
     expandedSsid = "";
     if (panelViewMode === "wifi") {
       ethernetInfoExpanded = false;
-      if (Settings.data.network.wifiEnabled && !NetworkService.scanning && Object.keys(NetworkService.networks).length === 0)
+      if (ShellState.data.network.wifiEnabled && !NetworkService.scanning && Object.keys(NetworkService.networks).length === 0)
         NetworkService.scan();
     } else {
       if (NetworkService.ethernetConnected) {
@@ -50,7 +50,7 @@ SmartPanel {
 
   // Computed network lists
   readonly property var knownNetworks: {
-    if (!Settings.data.network.wifiEnabled)
+    if (!ShellState.data.network.wifiEnabled)
       return [];
 
     var nets = Object.values(NetworkService.networks);
@@ -72,15 +72,15 @@ SmartPanel {
     // Also fetch Ethernet details if connected
     NetworkService.refreshActiveEthernetDetails();
     // Restore last view if valid, otherwise choose what's available (prefer Wi‑Fi when both exist)
-    if (Settings.data.ui.networkPanelView) {
-      const last = Settings.data.ui.networkPanelView;
+    if (ShellState.data.ui.networkPanelView) {
+      const last = ShellState.data.ui.networkPanelView;
       if (last === "ethernet" && NetworkService.hasEthernet()) {
         panelViewMode = "ethernet";
       } else {
         panelViewMode = "wifi";
       }
     } else {
-      if (!Settings.data.network.wifiEnabled && NetworkService.hasEthernet())
+      if (!ShellState.data.network.wifiEnabled && NetworkService.hasEthernet())
         panelViewMode = "ethernet";
       else
         panelViewMode = "wifi";
@@ -89,7 +89,7 @@ SmartPanel {
   }
 
   readonly property var availableNetworks: {
-    if (!Settings.data.network.wifiEnabled)
+    if (!ShellState.data.network.wifiEnabled)
       return [];
 
     var nets = Object.values(NetworkService.networks);
@@ -126,9 +126,9 @@ SmartPanel {
           RowLayout {
             NIcon {
               id: modeIcon
-              icon: panelViewMode === "wifi" ? (Settings.data.network.wifiEnabled ? "wifi" : "wifi-off") : (NetworkService.hasEthernet() ? (NetworkService.ethernetConnected ? "ethernet" : "ethernet") : "ethernet-off")
+              icon: panelViewMode === "wifi" ? (ShellState.data.network.wifiEnabled ? "wifi" : "wifi-off") : (NetworkService.hasEthernet() ? (NetworkService.ethernetConnected ? "ethernet" : "ethernet") : "ethernet-off")
               pointSize: Style.fontSizeXXL
-              color: panelViewMode === "wifi" ? (Settings.data.network.wifiEnabled ? Color.mPrimary : Color.mOnSurfaceVariant) : (NetworkService.ethernetConnected ? Color.mPrimary : Color.mOnSurfaceVariant)
+              color: panelViewMode === "wifi" ? (ShellState.data.network.wifiEnabled ? Color.mPrimary : Color.mOnSurfaceVariant) : (NetworkService.ethernetConnected ? Color.mPrimary : Color.mOnSurfaceVariant)
               MouseArea {
                 anchors.fill: parent
                 hoverEnabled: true
@@ -157,7 +157,7 @@ SmartPanel {
               icon: "refresh"
               tooltipText: I18n.tr("common.refresh")
               baseSize: Style.baseWidgetSize * 0.8
-              enabled: panelViewMode === "wifi" ? (Settings.data.network.wifiEnabled && !NetworkService.scanning) : true
+              enabled: panelViewMode === "wifi" ? (ShellState.data.network.wifiEnabled && !NetworkService.scanning) : true
               onClicked: {
                 if (panelViewMode === "wifi")
                   NetworkService.scan();
@@ -169,8 +169,8 @@ SmartPanel {
             NToggle {
               id: wifiSwitch
               visible: panelViewMode === "wifi"
-              checked: Settings.data.network.wifiEnabled
-              enabled: !Settings.data.network.airplaneModeEnabled && NetworkService.wifiAvailable
+              checked: ShellState.data.network.wifiEnabled
+              enabled: !ShellState.data.network.airplaneModeEnabled && NetworkService.wifiAvailable
               onToggled: checked => NetworkService.setWifiEnabled(checked)
               baseSize: Style.baseWidgetSize * 0.7 // Slightly smaller
             }
@@ -281,7 +281,7 @@ SmartPanel {
             // Wi‑Fi disabled state
             NBox {
               id: disabledBox
-              visible: panelViewMode === "wifi" && !Settings.data.network.wifiEnabled
+              visible: panelViewMode === "wifi" && !ShellState.data.network.wifiEnabled
               Layout.fillWidth: true
               Layout.preferredHeight: disabledColumn.implicitHeight + Style.margin2M
 
@@ -327,7 +327,7 @@ SmartPanel {
             // Scanning state (show when no networks and we haven't had any yet)
             NBox {
               id: scanningBox
-              visible: panelViewMode === "wifi" && Settings.data.network.wifiEnabled && Object.keys(NetworkService.networks).length === 0 && NetworkService.scanning
+              visible: panelViewMode === "wifi" && ShellState.data.network.wifiEnabled && Object.keys(NetworkService.networks).length === 0 && NetworkService.scanning
               Layout.fillWidth: true
               Layout.preferredHeight: scanningColumn.implicitHeight + Style.margin2M
 
@@ -364,7 +364,7 @@ SmartPanel {
             // Empty state when no networks (only show after we've had networks before, meaning a real empty result)
             NBox {
               id: emptyBox
-              visible: panelViewMode === "wifi" && Settings.data.network.wifiEnabled && !NetworkService.scanning && Object.keys(NetworkService.networks).length === 0 && !NetworkService.scanning
+              visible: panelViewMode === "wifi" && ShellState.data.network.wifiEnabled && !NetworkService.scanning && Object.keys(NetworkService.networks).length === 0 && !NetworkService.scanning
               Layout.fillWidth: true
               Layout.preferredHeight: emptyColumn.implicitHeight + Style.margin2M
 
@@ -408,7 +408,7 @@ SmartPanel {
             // Networks list container (Wi‑Fi)
             ColumnLayout {
               id: networksList
-              visible: panelViewMode === "wifi" && Settings.data.network.wifiEnabled && Object.keys(NetworkService.networks).length > 0
+              visible: panelViewMode === "wifi" && ShellState.data.network.wifiEnabled && Object.keys(NetworkService.networks).length > 0
               width: parent.width
               spacing: Style.marginM
 
@@ -646,7 +646,7 @@ SmartPanel {
                           baseSize: Style.baseWidgetSize * 0.8
                           onClicked: {
                             ethernetDetailsGrid = !ethernetDetailsGrid;
-                            Settings.data.network.wifiDetailsViewMode = ethernetDetailsGrid ? "grid" : "list";
+                            ShellState.data.ui.wifiDetailsViewMode = ethernetDetailsGrid ? "grid" : "list";
                           }
                           z: 1
                         }

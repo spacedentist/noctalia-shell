@@ -78,7 +78,7 @@ Item {
 
   // For managing expanded device details
   property string expandedDeviceKey: ""
-  property bool detailsGrid: (Settings.data.network.bluetoothDetailsViewMode === "grid")
+  property bool detailsGrid: (ShellState.data.ui.bluetoothDetailsViewMode === "grid")
 
   // Combined visibility check: tab must be visible AND the window must be visible
   readonly property bool effectivelyVisible: root.visible && Window.window && Window.window.visible
@@ -161,7 +161,7 @@ Item {
             label: I18n.tr("common.bluetooth")
             icon: BluetoothService.enabled ? "bluetooth" : "bluetooth-off"
             checked: BluetoothService.enabled
-            enabled: !Settings.data.network.airplaneModeEnabled && BluetoothService.bluetoothAvailable
+            enabled: !ShellState.data.network.airplaneModeEnabled && BluetoothService.bluetoothAvailable
             onToggled: checked => BluetoothService.setBluetoothEnabled(checked)
             Layout.alignment: Qt.AlignVCenter
           }
@@ -533,7 +533,7 @@ Item {
             baseSize: Style.baseWidgetSize * 0.8
             onClicked: {
               root.detailsGrid = !root.detailsGrid;
-              Settings.data.network.bluetoothDetailsViewMode = root.detailsGrid ? "grid" : "list";
+              ShellState.data.ui.bluetoothDetailsViewMode = root.detailsGrid ? "grid" : "list";
             }
             z: 1
           }

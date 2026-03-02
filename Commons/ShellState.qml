@@ -23,6 +23,7 @@ Singleton {
   signal notificationsStateChanged
   signal changelogStateChanged
   signal colorSchemesListChanged
+  signal networkStateChanged
 
   Component.onCompleted: {
     // Setup state file path (needs Settings to be available)
@@ -39,6 +40,8 @@ Singleton {
     id: stateFileView
     printErrors: false
     watchChanges: false
+
+    onAdapterUpdated: save()
 
     adapter: JsonAdapter {
       id: adapter
@@ -62,10 +65,19 @@ Singleton {
                                         timestamp: 0
                                       })
 
+      // Network state (synced with system, not user config)
+      property JsonObject network: JsonObject {
+        property bool wifiEnabled: true
+        property bool airplaneModeEnabled: false
+      }
+
       // UI state: settings panel, etc.
-      property var ui: ({
-                          settingsSidebarExpanded: true
-                        })
+      property JsonObject ui: JsonObject {
+        property bool settingsSidebarExpanded: true
+        property string networkPanelView: "wifi"
+        property string wifiDetailsViewMode: "grid"
+        property string bluetoothDetailsViewMode: "grid"
+      }
 
       // Telemetry state
       property var telemetry: ({
@@ -201,25 +213,12 @@ Singleton {
   }
 
   // UI state
-  function setUiState(stateData) {
-    adapter.ui = stateData;
-    save();
-  }
-
-  function getUiState() {
-    return adapter.ui || {
-      settingsSidebarExpanded: true
-    };
-  }
-
   function setSettingsSidebarExpanded(expanded) {
-    let uiState = getUiState();
-    uiState.settingsSidebarExpanded = expanded;
-    setUiState(uiState);
+    adapter.ui.settingsSidebarExpanded = expanded;
   }
 
   function getSettingsSidebarExpanded() {
-    return getUiState().settingsSidebarExpanded !== false; // default to true
+    return adapter.ui.settingsSidebarExpanded !== false; // default to true
   }
 
   // Telemetry state
